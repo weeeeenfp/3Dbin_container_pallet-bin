@@ -7,64 +7,38 @@ class Packer:
         self.bins = []
         self.unfitted = []
 
-    def add_bin(self, bin):
-        self.bins.append(bin)
-
-    def add_item(self, item):
-        self.unfitted.append(item)
+    def add_bin(self, bin): self.bins.append(bin)
+    def add_item(self, item): self.unfitted.append(item)
 
     def pack(self):
-        # 重物在下排序（論文要求）
-        self.unfitted.sort(key=lambda i: -i.weight / (i.w * i.d))
-
+        self.unfitted.sort(key=lambda i: -i.weight / (i.w * i.d))  # 重物在下
         while self.unfitted:
             item = self.unfitted.pop(0)
             placed = False
-
-            # 嘗試放入現有棧板
             for bin in self.bins:
-                if self._fit_item_in_bin(item, bin):
-                    placed = True
-                    break
-
-            # 若無法放入，開新棧板
+                if self._place(item, bin):
+                    placed = True; break
             if not placed:
                 new_bin = Bin(f"Pallet_{len(self.bins)+1}")
                 self.add_bin(new_bin)
-                self._fit_item_in_bin(item, new_bin)
+                self._place(item, new_bin)
 
-    def _fit_item_in_bin(self, item, bin):
-        if bin.total_weight + item.weight > bin.max_weight:
-            return False
-
-        # 嘗試所有旋轉
+    def _place(self, item, bin):
+        if bin.total_weight + item.weight > bin.max_weight: return False
+        original = (item.w, item.d, item.h)
         for rot in ROTATIONS:
             item.rotate_to(rot)
-            if item.w > PALLET_WIDTH or item.d > PALLET_DEPTH:
-                continue
-
-            # 簡單 Bottom-Left 策略（論文 Phase 1 精神）
-            candidates = [(0, 0)]
-            for placed in bin.items:
-                x = placed.position[0] + placed.w
-                y = placed.position[1]
-                if x + item.w <= PALLET_WIDTH and y + item.d <= PALLET_DEPTH:
-                    candidates.append((x, y))
-                x = placed.position[0]
-                y = placed.position[1] + placed.d
-                if x + item.w <= PALLET_WIDTH and y + item.d <= PALLET_DEPTH:
-                    candidates.append((x, y))
-
-            for x, y in candidates:
-                z = 0
-                for placed in bin.items:
-                    if (placed.position[0] < x + item.w and
-                        placed.position[0] + placed.w > x and
-                        placed.position[1] < y + item.d and
-                        placed.position[1] + placed.d > y):
-                        z = max(z, placed.position[2] + placed.h)
-
-                if z + item.h <= PALLET_MAX_HEIGHT:
-                    bin.put_item(item, x, y, z)
-                    return True
+            if item.w > PALLET_WIDTH or item.d > PALLET_DEPTH: continue
+            step = 50
+            for x in range(0, PALLET_WIDTH - item.w + 1, step):
+                for y in range(0, PALLET_DEPTH - item.d + 1, step):
+                    z = 0
+                    for p in bin.items:
+                        if (x < p.position[0] + p.w and x + item.w > p.position[0] and
+                            y < p.position[1] + p.d and y + item.d > p.position[1]):
+                            z = max(z, p.position[2] + p.h)
+                    if z + item.h <= PALLET_MAX_HEIGHT:
+                        bin.put_item(item, x, y, z)
+                        return True
+        item.w, item.d, item.h = original
         return False
