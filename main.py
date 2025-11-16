@@ -3,6 +3,9 @@ import time
 from openpyxl import load_workbook
 from packer import Packer
 from item import Item
+# 在所有 print 結果之後加入：
+from visualizer import generate_html_visualization
+
 
 start = time.time()
 
@@ -31,3 +34,4 @@ for b in bins:
 print(f"執行時間: {time.time()-start:.2f} 秒")
 if len(bins) * 22 >= len(items):
     print("全部裝完！1個40呎櫃就夠")
+generate_html_visualization(bins, items)
