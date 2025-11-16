@@ -1,12 +1,14 @@
 # config.py
-from dataclasses import dataclass
+PALLET_WIDTH = 1200
+PALLET_DEPTH = 1000
+PALLET_MAX_HEIGHT = 1650    # DHL 實務上限
+PALLET_MAX_WEIGHT = 1500
 
-@dataclass(frozen=True)
-class Dimensions:
-    PALLET = (1200, 1000, 1800)          # mm
-    CONTAINER = (12032, 2352, 2393)      # 40呎高櫃內尺寸
-    MIN_SPACE_VOLUME = 100*100*100
-
-ROTATIONS = [(0,1,2),(0,2,1),(1,0,2),(1,2,0),(2,0,1),(2,1,0)]
-COLORS = ["#FF6B6B","#4ECDC4","#45B7D1","#96CEB4","#FECA57",
-          "#DDA0DD","#98D8C8","#F7DC6F","#BB88FF","#78D5E3"]
+ROTATIONS = [
+    (0, 1, 2),  # 原方向 lwh
+    (0, 2, 1),  # lhw
+    (1, 0, 2),  # wlh
+    (1, 2, 0),  # whl
+    (2, 0, 1),  # hlw
+    (2, 1, 0),  # hwl
+]
