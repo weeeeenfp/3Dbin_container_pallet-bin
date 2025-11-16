@@ -1,105 +1,62 @@
-# packer.py - 完全符合 IEEE Access 2024 + DHL 規範
-from config import RealWorld, ROTATIONS
-from loader import Item
-from dataclasses import dataclass
-from typing import List, Tuple, Dict
+# packer.py
+from config import PALLET_WIDTH, PALLET_DEPTH, PALLET_MAX_HEIGHT, ROTATIONS
+from bin import Bin
 
-@dataclass
-class Box3D:
-    item_id: int
-    x: float; y: float; z: float
-    l: float; w: float; h: float
-    weight: float
-    support: float = 1.0
+class Packer:
+    def __init__(self):
+        self.bins = []
+        self.items = []
 
-class Pallet:
-    def __init__(self, pid: int):
-        self.id = pid
-        self.name = f"P120_Pallet_{pid:02d}"
-        self.boxes: List[Box3D] = []
-        self.support_surfaces: Dict[float, List[Tuple[float,float,float,float]]] = {0.0: [(0,0,RealWorld.PALLET_L,RealWorld.PALLET_W)]}
-        self.current_height = 0.0
+    def add_bin(self, bin):
+        self.bins.append(bin)
 
-    def can_place(self, l, w, h, weight, item_id) -> Tuple[bool, float, float, float]:
-        # 只考慮現有層頂部（DHL 不允許懸空）
-        candidate_zs = [0.0] + [b.z + b.h for b in self.boxes]
-        
-        for z in sorted(candidate_zs):
-            if z + h > RealWorld.PALLET_MAX_LOAD_H:
-                continue
-            # 嘗試兩種旋轉
-            for dl, dw in [(l,w), (w,l)]:
-                if dl > RealWorld.PALLET_L or dw > RealWorld.PALLET_W:
-                    continue
-                # 強制靠左下角（DHL 要求齊平）
-                x, y = 0.0, 0.0
-                if x + dl > RealWorld.PALLET_L or y + dw > RealWorld.PALLET_W:
-                    continue
-                
-                # 計算支撐率（論文 + DHL 要求）
-                supported = 0.0
-                total = dl * dw
-                for sx, sy, sl, sw in self.support_surfaces.get(z, []):
-                    ox = max(x, sx); oy = max(y, sy)
-                    ex = min(x+dl, sx+sl); ey = min(y+dw, sy+sw)
-                    if ox < ex and oy < ey:
-                        supported += (ex-ox)*(ey-oy)
-                if supported / total >= RealWorld.MIN_SUPPORT_RATIO:
-                    return True, x, y, z
-        return False, 0, 0, 0
+    def add_item(self, item):
+        self.items.append(item)
 
-    def place(self, l, w, h, weight, item_id):
-        placed, x, y, z = self.can_place(l, w, h, weight, item_id)
-        if not placed:
+    def pack(self):
+        # 重物在下排序（符合論文與實務）
+        self.items.sort(key=lambda i: -i.weight / (i.w * i.d))
+
+        for item in self.items[:]:
+            placed = False
+            # 先試現有棧板
+            for bin in self.bins:
+                if self._try_place_in_bin(item, bin):
+                    placed = True
+                    break
+            # 放不進去就開新棧板
+            if not placed:
+                new_bin = Bin(f"Pallet_{len(self.bins)+1}")
+                self.add_bin(new_bin)
+                self._try_place_in_bin(item, new_bin)
+
+    def _try_place_in_bin(self, item, bin):
+        if not bin.can_put_item(item):
             return False
-        
-        # 選擇最佳旋轉（面積最大者優先）
-        best_l, best_w = l, w
-        if w > l:
-            best_l, best_w = w, l
-        
-        self.boxes.append(Box3D(item_id, x, y, z, best_l, best_w, h, weight))
-        new_top = z + h
-        
-        # 更新支撐面
-        if new_top not in self.support_surfaces:
-            self.support_surfaces[new_top] = []
-        self.support_surfaces[new_top].append((x, y, best_l, best_w))
-        self.current_height = max(self.current_height, z + h)
-        return True
 
-def pack_dhl_ieee_compliant(items: List[Item]) -> List[Pallet]:
-    # 展開 + 重物在下排序（論文 + DHL 雙重要求）
-    all_boxes = []
-    for item in items:
-        for _ in range(item.qty):
-            density = item.weight / (item.l * item.w)  # 每單位底面積重量
-            all_boxes.append((item.l, item.w, item.h, item.weight, item.id, density))
-    all_boxes.sort(key=lambda x: -x[5])  # 重物優先
+        # 嘗試所有旋轉
+        original_dims = (item.w, item.d, item.h)
+        for rot in ROTATIONS:
+            item.w, item.d, item.h = original_dims[rot[0]], original_dims[rot[1]], original_dims[rot[2]]
 
-    pallets = []
-    pallet_id = 1
-    
-    i = 0
-    while i < len(all_boxes):
-        pallet = Pallet(pallet_id)
-        placed_in_this = 0
-        
-        j = i
-        while j < len(all_boxes):
-            l, w, h, wt, iid, _ = all_boxes[j]
-            if pallet.place(l, w, h, wt, iid):
-                all_boxes.pop(j)
-                placed_in_this += 1
-            else:
-                j += 1
-                
-        if placed_in_this > 0:
-            pallets.append(pallet)
-            pallet_id += 1
-            i = 0  # 重新從頭試（允許零頭填補）
-        else:
-            i += 1
-            
-    print(f"實務裝箱完成：共 {len(pallets)} 個棧板（每板高度 ≤ {RealWorld.PALLET_MAX_TOTAL_H}mm）")
-    return pallets
+            if item.w > PALLET_WIDTH or item.d > PALLET_DEPTH:
+                continue
+
+            # Bottom-Left-Fill 策略（簡單但有效）
+            for x in range(0, PALLET_WIDTH - item.w + 1, 100):
+                for y in range(0, PALLET_DEPTH - item.d + 1, 100):
+                    z = 0
+                    # 找最低可放置高度
+                    for placed in bin.items:
+                        if (placed.position[0] < x + item.w and
+                            placed.position[0] + placed.w > x and
+                            placed.position[1] < y + item.d and
+                            placed.position[1] + placed.d > y):
+                            z = max(z, placed.position[2] + placed.h)
+
+                    if z + item.h <= PALLET_MAX_HEIGHT:
+                        bin.put_item(item, [x, y, z])
+                        return True
+        # 還原原始尺寸
+        item.w, item.d, item.h = original_dims
+        return False

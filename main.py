@@ -26,7 +26,6 @@ packer.add_bin(Bin("Pallet_1"))
 
 for item in items:
     packer.add_item(item)
-
 print("開始裝箱...")
 packer.pack()
 
