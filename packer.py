@@ -1,44 +1,51 @@
 # packer.py
-from config import PALLET_WIDTH, PALLET_DEPTH, PALLET_MAX_HEIGHT, ROTATIONS
+from config import PALLET_L, PALLET_W, PALLET_MAX_H, MAX_WEIGHT, ROTATIONS
 from bin import Bin
+from item import Item
 
 class Packer:
     def __init__(self):
         self.bins = []
         self.unfitted = []
 
-    def add_bin(self, bin): self.bins.append(bin)
-    def add_item(self, item): self.unfitted.append(item)
+    def add_bin(self):
+        self.bins.append(Bin(len(self.bins)+1))
 
-    def pack(self):
-        self.unfitted.sort(key=lambda i: -i.weight / (i.w * i.d))  # 重物在下
-        while self.unfitted:
-            item = self.unfitted.pop(0)
+    def pack(self, items):
+        # 重物在下
+        items.sort(key=lambda i: -i.weight)
+
+        self.add_bin()  # 第一個棧板
+
+        for item in items:
             placed = False
             for bin in self.bins:
-                if self._place(item, bin):
-                    placed = True; break
-            if not placed:
-                new_bin = Bin(f"Pallet_{len(self.bins)+1}")
-                self.add_bin(new_bin)
-                self._place(item, new_bin)
+                if bin.weight + item.weight > MAX_WEIGHT:
+                    continue
 
-    def _place(self, item, bin):
-        if bin.total_weight + item.weight > bin.max_weight: return False
-        original = (item.w, item.d, item.h)
-        for rot in ROTATIONS:
-            item.rotate_to(rot)
-            if item.w > PALLET_WIDTH or item.d > PALLET_DEPTH: continue
-            step = 50
-            for x in range(0, PALLET_WIDTH - item.w + 1, step):
-                for y in range(0, PALLET_DEPTH - item.d + 1, step):
+                # 試 6 種旋轉
+                for rot in ROTATIONS:
+                    item.rotate(rot)
+                    if item.l > PALLET_L or item.w > PALLET_W:
+                        continue
+
+                    # 極簡 Bottom-Left
+                    x = y = 0
                     z = 0
-                    for p in bin.items:
-                        if (x < p.position[0] + p.w and x + item.w > p.position[0] and
-                            y < p.position[1] + p.d and y + item.d > p.position[1]):
-                            z = max(z, p.position[2] + p.h)
-                    if z + item.h <= PALLET_MAX_HEIGHT:
-                        bin.put_item(item, x, y, z)
-                        return True
-        item.w, item.d, item.h = original
-        return False
+                    for placed in bin.items:
+                        px, py, pz = placed.position
+                        if px < x + item.l and px + placed.l > x and py < y + item.w and py + placed.w > y:
+                            z = max(z, pz + placed.h)
+
+                    if z + item.h <= PALLET_MAX_H:
+                        bin.put(item, x, y, z)
+                        placed = True
+                        break
+                if placed:
+                    break
+
+            if not placed:
+                self.add_bin()
+                self.pack([item])  # 遞迴放新棧板（保證不卡）
+
+        return self.bins

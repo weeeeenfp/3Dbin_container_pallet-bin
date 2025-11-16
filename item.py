@@ -1,18 +1,16 @@
 # item.py
 class Item:
-    def __init__(self, name, w, d, h, weight):
+    def __init__(self, name, l, w, h, weight):
         self.name = name
-        self.w = w      # width (x)
-        self.d = d      # depth (y)
-        self.h = h      # height (z)
+        self.l = l
+        self.w = w
+        self.h = h
         self.weight = weight
-        self.position = None    # [x, y, z]
-        self.rotation = 0
+        self.position = None  # [x, y, z]
 
-    def rotate_to(self, rot_idx):
-        dims = [self.w, self.d, self.h]
-        self.w, self.d, self.h = dims[rot_idx[0]], dims[rot_idx[1]], dims[rot_idx[2]]
-        self.rotation = rot_idx
+    def rotate(self, rot):
+        dims = [self.l, self.w, self.h]
+        self.l, self.w, self.h = dims[rot[0]], dims[rot[1]], dims[rot[2]]
 
     def __repr__(self):
-        return f"{self.name}({self.w}×{self.d}×{self.h}, {self.weight}kg)"
+        return f"{self.name}({self.l}×{self.w}×{self.h})"

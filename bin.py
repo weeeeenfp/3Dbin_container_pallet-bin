@@ -1,23 +1,19 @@
 # bin.py
 class Bin:
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, id):
+        self.id = id
         self.items = []
-        self.width = 1200
-        self.depth = 1000
-        self.max_height = 1650
-        self.max_weight = 1500
-        self.total_weight = 0
+        self.weight = 0
 
-    def put_item(self, item, x, y, z):
+    def put(self, item, x, y, z):
         item.position = [x, y, z]
         self.items.append(item)
-        self.total_weight += item.weight
+        self.weight += item.weight
 
-    def get_height(self):
+    def height(self):
         if not self.items:
             return 0
-        return max(item.position[2] + item.h for item in self.items)
+        return max(z + item.h for item in self.items for x,y,z in [item.position])
 
     def __repr__(self):
-        return f"{self.name}: {len(self.items)}箱, 高{self.get_height()}mm, 重{self.total_weight:.1f}kg"
+        return f"Bin{self.id}: {len(self.items)}箱, 高{self.height()}mm, 重{self.weight}kg"
