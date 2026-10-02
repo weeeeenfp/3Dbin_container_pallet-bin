@@ -8,8 +8,8 @@
 
 不用安裝即可直接在瀏覽器檢視（可拖曳旋轉、縮放）：
 
-- [棧板裝箱圖](https://weeeeenfp.github.io/3Dbin_container_pallet-bin/%E7%B5%90%E6%9E%9C_%E6%A3%A7%E6%9D%BF%E8%A3%9D%E7%AE%B1%E5%9C%96.html)
-- [貨櫃排板圖](https://weeeeenfp.github.io/3Dbin_container_pallet-bin/%E7%B5%90%E6%9E%9C_%E8%B2%A8%E6%AB%83%E6%8E%92%E6%9D%BF%E5%9C%96.html)
+- [棧板裝箱圖](https://weeeeenfp.github.io/pallet-3d-bin-packing/%E7%B5%90%E6%9E%9C_%E6%A3%A7%E6%9D%BF%E8%A3%9D%E7%AE%B1%E5%9C%96.html)
+- [貨櫃排板圖](https://weeeeenfp.github.io/pallet-3d-bin-packing/%E7%B5%90%E6%9E%9C_%E8%B2%A8%E6%AB%83%E6%8E%92%E6%9D%BF%E5%9C%96.html)
 
 > 檔案較大（約 5 MB），載入需稍等數秒。
 
